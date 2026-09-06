@@ -25,7 +25,7 @@ jobs:
           mkdir -p "$RUNNER_TEMP/rooster-check"
           cd "$RUNNER_TEMP/rooster-check"
           npm init -y
-          npm install --ignore-scripts --no-audit --no-fund react@18.3.1 react-dom@18.3.1 @testing-library/react@15.0.7 jest@30.4.2 jest-environment-jsdom@30.4.2 @swc/jest@0.2.39 @swc/core ttag@1.8.12
+          npm install --ignore-scripts --no-audit --no-fund react@18.3.1 react-dom@18.3.1 @testing-library/react@15.0.7 jest@30.4.2 jest-environment-jsdom@30.4.1 @swc/jest@0.2.39 @swc/core ttag@1.8.12
       - name: Configure focused Jest run
         run: |
           cat > "$RUNNER_TEMP/rooster-check/jest.config.cjs" <<'JS'
