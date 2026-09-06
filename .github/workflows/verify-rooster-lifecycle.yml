@@ -1,0 +1,85 @@
+name: Rooster lifecycle regression (isolated)
+
+on:
+  push:
+    branches:
+      - verify/rooster-editor-unmount
+
+permissions:
+  contents: read
+
+jobs:
+  lifecycle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install isolated test dependencies
+        run: |
+          mkdir -p "$RUNNER_TEMP/rooster-check"
+          cd "$RUNNER_TEMP/rooster-check"
+          npm init -y
+          npm install --ignore-scripts --no-audit --no-fund react@18.3.1 react-dom@18.3.1 @testing-library/react@15.0.7 jest@30.4.2 jest-environment-jsdom@30.4.2 @swc/jest@0.2.39 @swc/core ttag@1.8.12
+      - name: Configure focused Jest run
+        run: |
+          cat > "$RUNNER_TEMP/rooster-check/jest.config.cjs" <<'JS'
+          const path = require('node:path');
+          module.exports = {
+              rootDir: process.env.GITHUB_WORKSPACE,
+              roots: ['<rootDir>/packages/components/components/editor/rooster/hooks'],
+              testMatch: ['**/useInitRooster.test.tsx'],
+              testEnvironment: require.resolve('jest-environment-jsdom'),
+              moduleDirectories: [path.join(__dirname, 'node_modules'), 'node_modules'],
+              moduleNameMapper: {
+                  '^@proton/([^/]+)(.*)$': '<rootDir>/packages/$1$2',
+                  '\\.(css|scss|less)$': '<rootDir>/packages/components/__mocks__/styleMock.js',
+              },
+              transform: {
+                  '^.+\\.[tj]sx?$': [require.resolve('@swc/jest'), {
+                      jsc: {
+                          parser: { syntax: 'typescript', tsx: true },
+                          transform: { react: { runtime: 'automatic' } },
+                      },
+                  }],
+              },
+          };
+          JS
+      - name: Verify the regression fails before the fix
+        run: |
+          target=packages/components/components/editor/rooster/hooks/useInitRooster.ts
+          cp "$target" "$RUNNER_TEMP/rooster-check/patched.ts"
+          git show 01ef302942ffbd2baf0c346289d4d790d6b6d28a:"$target" > "$target"
+          set +e
+          "$RUNNER_TEMP/rooster-check/node_modules/.bin/jest" --config "$RUNNER_TEMP/rooster-check/jest.config.cjs" --runInBand --json --outputFile="$RUNNER_TEMP/rooster-check/before.json"
+          result=$?
+          set -e
+          cp "$RUNNER_TEMP/rooster-check/patched.ts" "$target"
+          test "$result" -eq 1
+          node <<'JS'
+          const fs = require('node:fs');
+          const assert = require('node:assert/strict');
+          const report = JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP + '/rooster-check/before.json', 'utf8'));
+          assert.equal(report.numTotalTests, 2);
+          assert.equal(report.numFailedTests, 1);
+          assert.equal(report.numPassedTests, 1);
+          const failures = report.testResults.flatMap(result => result.assertionResults).filter(test => test.status === 'failed');
+          assert.match(failures[0].title, /finishes initializing after unmount/);
+          assert.match(failures[0].failureMessages.join('\n'), /Received number of calls:\s+0/);
+          console.log('Confirmed: the delayed initialization test fails on missing disposal; the normal lifecycle test passes.');
+          JS
+      - name: Verify both tests pass with the fix
+        run: |
+          "$RUNNER_TEMP/rooster-check/node_modules/.bin/jest" --config "$RUNNER_TEMP/rooster-check/jest.config.cjs" --runInBand --json --outputFile="$RUNNER_TEMP/rooster-check/after.json"
+          git diff --exit-code
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: rooster-lifecycle-results
+          path: ${{ runner.temp }}/rooster-check/*.json
+          if-no-files-found: ignore
