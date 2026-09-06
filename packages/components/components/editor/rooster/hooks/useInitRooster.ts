@@ -122,6 +122,7 @@ const useInitRooster = ({
 
         // Prevent setState execution in case component is unmounted
         if (!isMounted()) {
+            editor.dispose();
             return;
         }
 
