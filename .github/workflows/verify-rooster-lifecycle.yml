@@ -16,7 +16,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-          fetch-depth: 0
+          fetch-depth: 2
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
@@ -50,6 +50,8 @@ jobs:
               },
           };
           JS
+      - name: Fetch pre-fix snapshot
+        run: git fetch origin 01ef302942ffbd2baf0c346289d4d790d6b6d28a --depth=1
       - name: Verify the regression fails before the fix
         run: |
           target=packages/components/components/editor/rooster/hooks/useInitRooster.ts
