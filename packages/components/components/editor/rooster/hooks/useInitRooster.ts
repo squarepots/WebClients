@@ -138,6 +138,8 @@ const useInitRooster = ({
             return;
         }
 
+        let hasCleanedUp = false;
+
         const onEditorClick = () => {
             editorRef.current?.focus();
             onFocus?.();
@@ -145,14 +147,24 @@ const useInitRooster = ({
 
         void initRooster()
             .then((editorInstance) => {
+                if (hasCleanedUp) {
+                    editorInstance?.dispose();
+                    return;
+                }
+
                 editorRef.current = editorInstance;
             })
             .then(() => {
+                if (hasCleanedUp) {
+                    return;
+                }
+
                 const editorWrapper = iframeRef.current?.contentDocument?.getElementById(ROOSTER_EDITOR_WRAPPER_ID);
                 editorWrapper?.addEventListener('click', onEditorClick);
             });
 
         return () => {
+            hasCleanedUp = true;
             editorRef.current?.dispose();
 
             const editorWrapper = iframeRef.current?.contentDocument?.getElementById(ROOSTER_EDITOR_WRAPPER_ID);
