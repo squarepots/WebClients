@@ -96,4 +96,21 @@ describe('useInitRooster', () => {
 
         expect(initialization.editor.dispose).toHaveBeenCalledTimes(1);
     });
+
+    it('disposes the editor if onReady synchronously unmounts the component', async () => {
+        const initialization = createInitialization();
+        jest.mocked(initRoosterEditor).mockReturnValueOnce(initialization.promise);
+        let unmount!: () => void;
+        const props = createProps();
+        props.onReady = jest.fn(() => unmount());
+        ({ unmount } = render(<TestEditor {...props} />));
+
+        await act(async () => {
+            initialization.resolve();
+            await initialization.promise;
+        });
+
+        expect(props.onReady).toHaveBeenCalledTimes(1);
+        expect(initialization.editor.dispose).toHaveBeenCalledTimes(1);
+    });
 });
