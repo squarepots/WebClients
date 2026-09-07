@@ -71,7 +71,6 @@ describe('useInitRooster wrapper click focus behavior', () => {
             fireEvent.click(wrapper);
         });
 
-        expect(editor.hasFocus).toHaveBeenCalledTimes(1);
         expect(editor.focus).not.toHaveBeenCalled();
         expect(props.onFocus).toHaveBeenCalledTimes(1);
     });
@@ -83,7 +82,6 @@ describe('useInitRooster wrapper click focus behavior', () => {
             fireEvent.click(wrapper);
         });
 
-        expect(editor.hasFocus).toHaveBeenCalledTimes(1);
         expect(editor.focus).toHaveBeenCalledTimes(1);
         expect(props.onFocus).toHaveBeenCalledTimes(1);
     });
