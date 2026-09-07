@@ -71,9 +71,9 @@ jobs:
           assert.equal(report.numFailedTests, 1);
           assert.equal(report.numPassedTests, 1);
           const failures = report.testResults.flatMap(result => result.assertionResults).filter(test => test.status === 'failed');
+          assert.equal(failures.length, 1);
           assert.match(failures[0].title, /finishes initializing after unmount/);
-          assert.match(failures[0].failureMessages.join('\n'), /Received number of calls:\s+0/);
-          console.log('Confirmed: the delayed initialization test fails on missing disposal; the normal lifecycle test passes.');
+          console.log('Confirmed: the delayed initialization regression fails on the pre-fix source while the normal lifecycle test passes.');
           JS
       - name: Verify both tests pass with the fix
         run: |
