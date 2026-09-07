@@ -50,13 +50,13 @@ jobs:
               },
           };
           JS
-      - name: Fetch pre-fix snapshot
-        run: git fetch origin 01ef302942ffbd2baf0c346289d4d790d6b6d28a --depth=1
-      - name: Verify the regression fails before the fix
+      - name: Fetch previous PR snapshot
+        run: git fetch origin cf2dd3ba845ee261da885870d20232ab9c4fa3d0 --depth=1
+      - name: Verify the new regression fails before the cleanup flag
         run: |
           target=packages/components/components/editor/rooster/hooks/useInitRooster.ts
           cp "$target" "$RUNNER_TEMP/rooster-check/patched.ts"
-          git show 01ef302942ffbd2baf0c346289d4d790d6b6d28a:"$target" > "$target"
+          git show cf2dd3ba845ee261da885870d20232ab9c4fa3d0:"$target" > "$target"
           set +e
           "$RUNNER_TEMP/rooster-check/node_modules/.bin/jest" --config "$RUNNER_TEMP/rooster-check/jest.config.cjs" --runInBand --json --outputFile="$RUNNER_TEMP/rooster-check/before.json"
           result=$?
@@ -67,15 +67,15 @@ jobs:
           const fs = require('node:fs');
           const assert = require('node:assert/strict');
           const report = JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP + '/rooster-check/before.json', 'utf8'));
-          assert.equal(report.numTotalTests, 2);
+          assert.equal(report.numTotalTests, 3);
           assert.equal(report.numFailedTests, 1);
-          assert.equal(report.numPassedTests, 1);
+          assert.equal(report.numPassedTests, 2);
           const failures = report.testResults.flatMap(result => result.assertionResults).filter(test => test.status === 'failed');
           assert.equal(failures.length, 1);
-          assert.match(failures[0].title, /finishes initializing after unmount/);
-          console.log('Confirmed: the delayed initialization regression fails on the pre-fix source while the normal lifecycle test passes.');
+          assert.match(failures[0].title, /onReady synchronously unmounts/);
+          console.log('Confirmed: synchronous unmount from onReady leaks on the previous PR snapshot.');
           JS
-      - name: Verify both tests pass with the fix
+      - name: Verify all lifecycle tests pass with the final fix
         run: |
           "$RUNNER_TEMP/rooster-check/node_modules/.bin/jest" --config "$RUNNER_TEMP/rooster-check/jest.config.cjs" --runInBand --json --outputFile="$RUNNER_TEMP/rooster-check/after.json"
           git diff --exit-code
