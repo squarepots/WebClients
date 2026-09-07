@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { StrictMode, useRef } from 'react';
 
 import { act, render } from '@testing-library/react';
 import type { IEditor } from 'roosterjs-editor-types';
@@ -112,5 +112,42 @@ describe('useInitRooster', () => {
 
         expect(props.onReady).toHaveBeenCalledTimes(1);
         expect(initialization.editor.dispose).toHaveBeenCalledTimes(1);
+    });
+
+    it('ignores a stale StrictMode initialization and only readies the current editor', async () => {
+        const staleInitialization = createInitialization();
+        const currentInitialization = createInitialization();
+        jest.mocked(initRoosterEditor)
+            .mockReturnValueOnce(staleInitialization.promise)
+            .mockReturnValueOnce(currentInitialization.promise);
+        const props = createProps();
+        const { unmount } = render(
+            <StrictMode>
+                <TestEditor {...props} />
+            </StrictMode>
+        );
+
+        expect(initRoosterEditor).toHaveBeenCalledTimes(2);
+
+        await act(async () => {
+            staleInitialization.resolve();
+            await staleInitialization.promise;
+        });
+
+        expect(staleInitialization.editor.dispose).toHaveBeenCalledTimes(1);
+        expect(props.onReady).not.toHaveBeenCalled();
+
+        await act(async () => {
+            currentInitialization.resolve();
+            await currentInitialization.promise;
+        });
+
+        expect(props.onReady).toHaveBeenCalledTimes(1);
+        expect(props.onReady).toHaveBeenCalledWith(currentInitialization.actions);
+        expect(currentInitialization.editor.dispose).not.toHaveBeenCalled();
+
+        unmount();
+
+        expect(currentInitialization.editor.dispose).toHaveBeenCalledTimes(1);
     });
 });
